@@ -1,0 +1,44 @@
+name: Continuous Deployment
+on:
+  push:
+    branches:
+      - master
+      - main
+
+jobs:
+  test:
+    runs-on: self-hosted
+    container: ubuntu:14.04
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v3
+
+      - name: Install php5
+        run: |
+          sudo apt update && sudo apt install php5 -yqq
+
+      - name: Run index.php
+        run: |
+          php index.php
+
+  deploy:
+    runs-on: self-hosted
+    container: ubuntu:14.04
+    steps:
+      - name: Setup SSH
+        run: |
+          # Setup ssh
+          which ssh-agent || ( apt-get update -y && apt-get install openssh-client -y )
+          eval $(ssh-agent -s)
+          ssh-add <(echo $SSH_PRIVATE_KEY | base64 -d)
+          mkdir -p ~/.ssh
+          chmod 700 ~/.ssh
+          ssh-keyscan $PUBLIC_IP_VM >> ~/.ssh/known_hosts
+          chmod 644 ~/.ssh/known_hosts
+
+      - name: Deploy to VM
+        run: |
+          scp -i "$SSH_PRIVATE_KEY" -o StrictHostKeyChecking=no index.php ubuntu@"$PUBLIC_IP_VM":/tmp/php
+          ssh -i "$SSH_PRIVATE_KEY" -o StrictHostKeyChecking=no ubuntu@"$PUBLIC_IP_VM" 'killall -9 php ; cd /tmp/php ; nohup php -S 0:8000 & && exit'
+
+            
