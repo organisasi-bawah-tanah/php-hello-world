@@ -25,22 +25,20 @@ jobs:
     runs-on: self-hosted
     container: ubuntu:14.04
     steps:
-      - name: Setup SSH
-        shell: bash
-        run: |
-          # Setup ssh
-          which ssh-agent || ( apt-get update -y && apt-get install openssh-client -y )
-          eval $(ssh-agent -s)
-          ssh-add <(echo $SSH_PRIVATE_KEY | base64 -d)
-          mkdir -p ~/.ssh
-          chmod 700 ~/.ssh
-          ssh-keyscan $PUBLIC_IP_VM >> ~/.ssh/known_hosts
-          chmod 644 ~/.ssh/known_hosts
+      - uses: actions/checkout@master
+      - name: SCP file to /tmp path
+        uses: appleboy/scp-action@master
+        with:
+          host: ${{ secrets.PUBLIC_IP_VM }}
+          username: ubuntu
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          source: "index.php"
+          target: "/tmp"
 
-      - name: Deploy to VM
-        shell: bash
-        run: |
-          scp -i "$SSH_PRIVATE_KEY" -o StrictHostKeyChecking=no index.php ubuntu@"$PUBLIC_IP_VM":/tmp/php
-          ssh -i "$SSH_PRIVATE_KEY" -o StrictHostKeyChecking=no ubuntu@"$PUBLIC_IP_VM" 'killall -9 php ; cd /tmp/php ; nohup php -S 0:8000 & && exit'
-
-            
+      - name: Execute php script
+        uses: appleboy/ssh-action@master
+        with:
+          host: ${{ secrets.PUBLIC_IP_VM }}
+          username: ubuntu
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          script: killall -9 php ; cd /tmp ; php -S 0:8000 &>/dev/null & exit
