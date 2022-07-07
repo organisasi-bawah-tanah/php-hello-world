@@ -26,6 +26,7 @@ jobs:
     container: ubuntu:14.04
     steps:
       - name: Setup SSH
+        shell: bash
         run: |
           # Setup ssh
           which ssh-agent || ( apt-get update -y && apt-get install openssh-client -y )
@@ -37,6 +38,7 @@ jobs:
           chmod 644 ~/.ssh/known_hosts
 
       - name: Deploy to VM
+        shell: bash
         run: |
           scp -i "$SSH_PRIVATE_KEY" -o StrictHostKeyChecking=no index.php ubuntu@"$PUBLIC_IP_VM":/tmp/php
           ssh -i "$SSH_PRIVATE_KEY" -o StrictHostKeyChecking=no ubuntu@"$PUBLIC_IP_VM" 'killall -9 php ; cd /tmp/php ; nohup php -S 0:8000 & && exit'
